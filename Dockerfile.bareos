@@ -1,0 +1,35 @@
+FROM       ubuntu:16.04
+MAINTAINER momcilomedic
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV HOSTNAME bareos
+ENV TERM xterm
+
+#install standard packages
+RUN apt-get update && apt-get upgrade -y && apt-get install -y wget less aptitude ntpdate && apt-get clean
+
+#install bareos from their own repo
+RUN echo "deb http://download.bareos.org/bareos/release/latest/xUbuntu_16.04/ /" > /etc/apt/sources.list.d/bareos.list
+RUN wget -q http://download.bareos.org/bareos/release/latest/xUbuntu_16.04/Release.key -O- | apt-key add -
+RUN apt-get update && apt-get install -y bareos-filedaemon bareos-storage && apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+
+WORKDIR /root
+
+#Mountpoints
+RUN mkdir -p /backup
+
+
+#add scripts
+ADD [ "prepare.sh","/root/" ]
+RUN chmod u+x /root/*.sh
+
+#volumes
+VOLUME ["/backup"]
+VOLUME ["/etc/bareos","/var/log/bareos"]
+
+# fd, storage daemons 
+EXPOSE 9102 9103
+
+
+ENTRYPOINT ["/root/prepare.sh"]
+CMD ["/usr/bin/tail","-f","/var/log/bareos/bareos.log"]
